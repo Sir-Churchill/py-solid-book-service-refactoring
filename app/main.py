@@ -23,55 +23,71 @@ class ReversePrint(PrintStrategy):
         print(book.content[::-1])
 
 
-class JsonSerializer:
+class Serializer:
     def serialize(self, book: Book) -> str:
-        return json.dumps(book.content)
+        raise NotImplementedError
 
 
-class XmlSerializer:
+class JsonSerializer(Serializer):
+    def serialize(self, book: Book) -> str:
+        return json.dumps({
+            "title": book.title,
+            "content": book.content
+        })
+
+
+class XmlSerializer(Serializer):
     def serialize(self, book: Book) -> str:
         root = ET.Element("book")
+
         title = ET.SubElement(root, "title")
         title.text = book.title
+
         content = ET.SubElement(root, "content")
         content.text = book.content
+
         return ET.tostring(root, encoding="unicode")
 
 
-def main(book: Book, commands: list[tuple[str, str]]) -> None | str:
-    for cmd, method_type in commands:
+class CommandHandler:
+
+    display_strategies = {
+        "console": ConsolePrint(),
+        "reverse": ReversePrint(),
+    }
+
+    print_strategies = {
+        "console": ConsolePrint(),
+        "reverse": ReversePrint(),
+    }
+
+    serializers = {
+        "json": JsonSerializer(),
+        "xml": XmlSerializer(),
+    }
+
+    def execute(self, book: Book, cmd: str, method: str) -> str | None:
         if cmd == "display":
-            if method_type == "console":
-                ConsolePrint().print(book)
-            elif method_type == "reverse":
-                ReversePrint().print(book)
-            else:
-                raise ValueError("Unknown display type")
+            strategy = self.display_strategies[method]
+            strategy.print(book)
 
         elif cmd == "print":
-            if method_type == "console":
-                print(f"Printing the book: {book.title}...")
-                ConsolePrint().print(book)
-
-            elif method_type == "reverse":
-                print(f"Printing the book in reverse: {book.title}...")
-                ReversePrint().print(book)
-
-            else:
-                raise ValueError("Unknown print type")
+            strategy = self.print_strategies[method]
+            print(book.title)
+            strategy.print(book)
 
         elif cmd == "serialize":
-            if method_type == "json":
-                return json.dumps({
-                    "title": book.title,
-                    "content": book.content
-                })
-            elif method_type == "xml":
-                return XmlSerializer().serialize(book)
-            else:
-                raise ValueError("Unknown serialize type")
+            serializer = self.serializers[method]
+            return serializer.serialize(book)
+
+        else:
+            raise ValueError(f"Unknown command: {cmd}")
 
 
-if __name__ == "__main__":
-    sample_book = Book("Sample Book", "This is some sample content.")
-    print(main(sample_book, [("display", "reverse"), ("serialize", "xml")]))
+def main(book: Book, commands: list[tuple[str, str]]) -> str | None:
+    handler = CommandHandler()
+
+    for cmd, method in commands:
+        result = handler.execute(book, cmd, method)
+        if result is not None:
+            return result
