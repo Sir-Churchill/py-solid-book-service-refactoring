@@ -1,6 +1,7 @@
 from app.book import Book
-from app.strategies import ConsolePrint,ReversePrint
+from app.strategies import ConsolePrint, ReversePrint
 from app.serializers import JsonSerializer, XmlSerializer
+
 
 class CommandHandler:
 
